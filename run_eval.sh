@@ -3,7 +3,7 @@
 #
 #   PY=python GPU=0 OUT=out ./run_eval.sh
 #
-# See README section 6.  K = 12 on CIRR, K = 20 on CIRCO / FashionIQ.
+# K = 12 on CIRR, K = 20 on CIRCO / FashionIQ.
 set -euo pipefail
 
 PY=${PY:-python}

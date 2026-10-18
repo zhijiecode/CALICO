@@ -57,17 +57,16 @@ import numpy as np
 # data that lives elsewhere.
 ROOT = Path(os.environ.get("CALICO_ROOT", Path(__file__).resolve().parent)).resolve()
 HERE = ROOT
-MAN_DIR = ROOT / "manifests"          # bundled cirbench manifests
+MAN_DIR = ROOT / "manifests"          # dataset manifests
 ART_DIR = ROOT / "artifacts"          # MLLM text views / roles / descriptions
-IDX_DIR = ROOT / "indices" / "cirbench"
+IDX_DIR = ROOT / "indices"
 PATCH_DIR = ROOT / "out" / "lateint"
 MODELS = ROOT / "models"
 sys.path.insert(0, str(ROOT))
 LAION_W = MODELS / "clip_laion" / "open_clip_pytorch_model.bin"
 
-# Backbone column for the SDR-CIR-style B/32, L/14, G/14 sweep.  L14 is the
-# frozen project default: its index tag and patch-cache filename are unchanged,
-# so omitting --clip reproduces every historical number bit-for-bit.
+# Backbone column: B/32, L/14 and G/14.  L14 is the default; its index tag and
+# patch-cache filename are unchanged when --clip is omitted.
 CLIP_SPECS = {
     "L14": dict(model="ViT-L-14",
                 weights=MODELS / "clip_laion" / "open_clip_pytorch_model.bin",
@@ -84,7 +83,7 @@ from cirmetrics import aggregate_fiq, cirr_metrics, fiq_metrics  # noqa: E402
 from eval_utils import circo_metrics, simplex  # noqa: E402
 from faiss_utils import load_faiss_index  # noqa: E402
 
-# per-dataset defaults, copied verbatim from view_eval_cirbench.py
+# per-dataset defaults (alpha, beta)
 DATASETS = {
     "cirr_val": ("selectivecot_qwen3vl8b_cirr_val.json", (0.05, 0.50)),
     "cirr_test1": ("selectivecot_qwen3vl8b_cirr_test1.json", (0.05, 0.50)),
@@ -95,7 +94,6 @@ DATASETS = {
     "fiq_dress_val": ("selectivecot_qwen3vl8b_fiq_dress_val.json", (0.20, 0.40)),
     "fiq_shirt_val": ("selectivecot_qwen3vl8b_fiq_shirt_val.json", (0.20, 0.40)),
     "fiq_toptee_val": ("selectivecot_qwen3vl8b_fiq_toptee_val.json", (0.20, 0.40)),
-    "pinpoint": ("pinpoint_qwen3vl8b_desc.json", (0.05, 0.50)),
 }
 ABGRID = [(al, be) for al in (0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4)
           for be in (0.1, 0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.65, 0.8, 0.95, 1.1,
@@ -230,12 +228,11 @@ def main():
     ap.add_argument("--dataset", default="cirr_val",
                     help="manifest name, e.g. cirr_val, cirr_test1, circo_test, fiq_shirt_val")
     ap.add_argument("--clip", default="L14", choices=sorted(CLIP_SPECS),
-                    help="CLIP backbone column: L14=ViT-L/14 LAION (default, historical "
-                         "config), B32, G14")
+                    help="CLIP backbone column: L14=ViT-L/14 LAION (default), B32, G14")
     ap.add_argument("--manifest", default=None,
-                    help="cirbench manifest JSON (default: manifests/<dataset>.json)")
+                    help="dataset manifest JSON (default: manifests/<dataset>.json)")
     ap.add_argument("--index-dir", default=None,
-                    help="FAISS index dir (default: indices/cirbench/<dataset>/<idx_tag>)")
+                    help="FAISS index dir (default: indices/<dataset>/<idx_tag>)")
     ap.add_argument("--patch", default=None,
                     help="gallery patch-token cache npz (default: out/lateint/<dataset>_patch*.npz)")
     ap.add_argument("--views", default=None,
@@ -288,7 +285,7 @@ def main():
                     help="json written by a previous validation run (--out); supplies "
                          "full_ab / full_all.w / pool_choice")
     ap.add_argument("--sub-dir", default=None, help="output dir for the submission files")
-    ap.add_argument("--sub-name", default="relic", help="submission filename prefix")
+    ap.add_argument("--sub-name", default="calico", help="submission filename prefix")
     ap.add_argument("--fixed-hparams", default=None,
                     help="cross-dataset frozen protocol: read (alpha,beta), channel "
                          "weights w, pooling and CSLS (k,lambda) from a finished run on "
@@ -431,7 +428,7 @@ def main():
 
     ROLES = [k for k in ("O", "Om", "A", "ctx") if coverage[k] > 0]
     # ``rw``/``de`` are the text views of the single-vector line: keeping them as
-    # *channels* lets RELIC subsume M1 instead of competing with it.
+    # *channels* lets CALICO subsume M1 instead of competing with it.
     VSETS = ["rw", "de", "O", "Om", "A", "ctx"]
     # ``avoid`` states what the target must NOT contain and has ~98% coverage,
     # far above ``A``/``ctx`` (~55%); it is a natural second negative-evidence
@@ -441,7 +438,7 @@ def main():
         VSETS = VSETS + ["av"]
         NGR["av"] = (0.0, -0.02, -0.05, -0.1, -0.2, -0.4)
     # Phase C4 role-necessity ablation: removing a channel from VSETS/ROLES makes
-    # the very same RELIC_all row read "RELIC minus that role".
+    # the very same CALICO_all row read "CALICO minus that role".
     if a.drop:
         for c in a.drop.split(","):
             c = c.strip()
@@ -1769,7 +1766,7 @@ def main():
         fullsim[tag] = sF
         res["full_" + tag] = {"w": {k: round(v, 3) for k, v in w.items()},
                               "gamma": g, "metrics": metrics(sF)}
-        print("  RELIC_%-4s w=%s gamma=%.2f -> %s"
+        print("  CALICO_%-4s w=%s gamma=%.2f -> %s"
               % (tag, {k: round(v, 2) for k, v in w.items()}, g, fmt(metrics(sF))),
               flush=True)
 
@@ -1782,25 +1779,14 @@ def main():
             fullsim[tag + "_csls"] = sC
             res["full_" + tag + "_csls"] = {"k": a.csls, "lam": a.csls_lam,
                                             "metrics": metrics(sC)}
-            print("  +R5(csls k=%d lam=%.2f) on RELIC_%-4s -> %s"
+            print("  +R5(csls k=%d lam=%.2f) on CALICO_%-4s -> %s"
                   % (a.csls, a.csls_lam, tag, fmt(metrics(sC))), flush=True)
 
-    # ---- R5 (merged, dual-anchor): gallery-scale-adaptive neighbourhood ----------
-    # The two k-reciprocal probes fail on OPPOSITE sides of the gallery-size axis
-    # (measured, protocol/out/relic/r5_gauge_diag.log):
-    #   * reference anchor : headAUC 0.564 at N=2.3k (CIRR, +0.67) but 0.556 at
-    #     N=123k (CIRCO, +0.00) -- at 123k the reference's mutual-neighbour set is
-    #     uninformative, so the channel enters the fusion as noise and a frozen
-    #     weight cannot know it (it costs -3.5 mAP@5 at w=0.02);
-    #   * retrieval anchor : the probe is the base's OWN top-1, so at large N, where
-    #     the base top-1 is often wrong, its neighbourhood is genuinely new
-    #     information (+1.45 mAP@5 on CIRCO), while at small N it merely re-encodes
-    #     the base and is exactly neutral on R@1.
-    # One module uses both anchors.  The reference anchor is scaled by a LABEL-FREE
-    # consistency gate read off the target gallery alone:
-    #     g = 1[ median_rank( base top-1 inside kr_ref ) / N <= --r5dual_gate ]
-    # which is 0.004 (on) on CIRR/FIQ and 0.689 (off) on CIRCO.  No labels and no
-    # target-split fitting enter the gate; the weights are frozen on CIRR val.
+    # ---- cross-query column calibration -----------------------------------------
+    # Two label-free column operators are applied on top of the fused score
+    # matrix: a fine-scale neighbourhood term and a gallery-size-adaptive coarse
+    # term.  Optional k-reciprocal channels can be switched on as well, but they
+    # are off in the released configuration, which also skips the graph.
     r5dual_mats = {}
     if a.r5dual:
         btag = a.r5dual_base
@@ -2016,7 +2002,7 @@ def main():
                 sK = (s0 + bw * sd0 * kz).astype(np.float32)
                 fullsim[tag + "_kr"] = sK
                 res["full_" + tag + "_kr"] = {"w": bw, "metrics": metrics(sK)}
-                print("  +R5'[k-reciprocal] w=%.2f on RELIC_%-9s -> %s"
+                print("  +R5'[k-reciprocal] w=%.2f on CALICO_%-9s -> %s"
                       % (bw, tag, fmt(metrics(sK))), flush=True)
 
     # ------------------------------------------------------------ k-fold CV ----
@@ -2024,14 +2010,14 @@ def main():
         fold = np.arange(n) % a.folds
         V3 = ("d0", "de", "rw")
         fams = ["M0_ab_only", "M1_3view", "M2a_calib", "M2b_refrep",
-                "RELIC_role", "RELIC_all", "RELIC_all_ref", "RELIC_m2b"]
+                "CALICO_role", "CALICO_all", "CALICO_all_ref", "CALICO_m2b"]
         if a.csls:
-            fams.append("RELIC_csls")
+            fams.append("CALICO_csls")
             if a.r5kr:
                 # the shipped configuration: R5 (CSLS) then R5' (k-reciprocal) on top
-                fams.append("RELIC_csls_kr")
+                fams.append("CALICO_csls_kr")
         if kz is not None:
-            fams.append("RELIC_kr")
+            fams.append("CALICO_kr")
         held = {t: np.full((n, N), -1e9) for t in fams}
         per_fold = {t: [] for t in fams}
         print("\n=== %d-fold CV (selection metric = %s) ===" % (a.folds, main_key),
@@ -2084,24 +2070,24 @@ def main():
                 per_fold[t].append(metrics(bb[t][1], te)[main_key])
             M2a = bb["M2a_calib"][1]
 
-            # RELIC: channels from the d0 base, weights fitted on the train folds
-            for tag, sets, ref in (("RELIC_role", ROLES, False),
-                                   ("RELIC_all", VSETS, False),
-                                   ("RELIC_all_ref", VSETS, True)):
+            # CALICO: channels from the d0 base, weights fitted on the train folds
+            for tag, sets, ref in (("CALICO_role", ROLES, False),
+                                   ("CALICO_all", VSETS, False),
+                                   ("CALICO_all_ref", VSETS, True)):
                 if not sets:
                     continue
                 w, g, sF = ascend(Btr, sets, VALID, iters=3,
                                   gamma=(G_REF if ref else None))
                 held[tag][te] = sF[te]
                 per_fold[tag].append(metrics(sF, te)[main_key])
-                if tag == "RELIC_all_ref":
+                if tag == "CALICO_all_ref":
                     wA, gA = w, g
-                if tag == "RELIC_all" and a.csls:
+                if tag == "CALICO_all" and a.csls:
                     # honest: r_g is estimated from the *train* folds only, so the
                     # held-out rows never contribute to their own calibration.
                     sC = csls_apply(sF, tr, a.csls, a.csls_lam)
-                    held["RELIC_csls"][te] = sC[te]
-                    per_fold["RELIC_csls"].append(metrics(sC, te)[main_key])
+                    held["CALICO_csls"][te] = sC[te]
+                    per_fold["CALICO_csls"].append(metrics(sC, te)[main_key])
                     if a.r5kr:
                         # R5' on top of the shipped R5 model.  Same honest protocol:
                         # the encoding is a gallery-side index, so only the mixing
@@ -2111,9 +2097,9 @@ def main():
                         cand = {v: metrics(sC + v * sd_c * kz, tr)[main_key] for v in gg}
                         vbest = max(cand, key=cand.get)
                         sCK = (sC + vbest * sd_c * kz).astype(np.float32)
-                        held["RELIC_csls_kr"][te] = sCK[te]
-                        per_fold["RELIC_csls_kr"].append(metrics(sCK, te)[main_key])
-                if tag == "RELIC_all" and kz is not None:
+                        held["CALICO_csls_kr"][te] = sCK[te]
+                        per_fold["CALICO_csls_kr"].append(metrics(sCK, te)[main_key])
+                if tag == "CALICO_all" and kz is not None:
                     # R5': only the mixing weight is fitted, and on the train folds;
                     # the encoding itself is query-independent, so no held-out row
                     # contributes to it in any way.
@@ -2122,9 +2108,9 @@ def main():
                     cand = {v: metrics(sF + v * sd_k * kz, tr)[main_key] for v in gg}
                     vbest = max(cand, key=cand.get)
                     sK = (sF + vbest * sd_k * kz).astype(np.float32)
-                    held["RELIC_kr"][te] = sK[te]
-                    per_fold["RELIC_kr"].append(metrics(sK, te)[main_key])
-            # RELIC on top of the strongest single-vector base (M2a fused) + gamma
+                    held["CALICO_kr"][te] = sK[te]
+                    per_fold["CALICO_kr"].append(metrics(sK, te)[main_key])
+            # CALICO on top of the strongest single-vector base (M2a fused) + gamma
             sets = VSETS
             sd = M2a.std(1, keepdims=True)
             CHm = {k: calz(k) * sd * VALID[k][:, None] for k in sets}
@@ -2135,8 +2121,8 @@ def main():
                 cand[gr] = (metrics(sm, tr)[main_key], sm)
             gbest = max(cand, key=lambda x: cand[x][0])
             sb = cand[gbest][1]
-            held["RELIC_m2b"][te] = sb[te]
-            per_fold["RELIC_m2b"].append(metrics(sb, te)[main_key])
+            held["CALICO_m2b"][te] = sb[te]
+            per_fold["CALICO_m2b"].append(metrics(sb, te)[main_key])
 
             print("  fold %d: w3=%s %s" % (
                 f, tuple(round(x, 2) for x in w3),

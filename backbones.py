@@ -84,7 +84,7 @@ class OpenClipBackbone:
 
 
 class MetaCLIP2Backbone(OpenClipBackbone):
-    """The backbone PinPoint ships as its MetaCLIP2 baseline."""
+    """MetaCLIP2 ViT-H/14 backbone (open_clip)."""
 
     name = "metaclip2"
     model_name = "ViT-H-14-worldwide-quickgelu"
@@ -93,11 +93,10 @@ class MetaCLIP2Backbone(OpenClipBackbone):
 
 
 class CLIPLaionBackbone(OpenClipBackbone):
-    """Independent third-party Web CLIP: LAION-2B ViT-L/14.
+    """LAION-2B CLIP ViT-L/14 (open_clip), the released default backbone.
 
-    Deliberately neither MetaCLIP2 nor BGE-VL: a different model family, a
-    different training corpus (LAION-2B) and a different (non-LLM) fusion, used
-    to test whether the ESIA ladder generalises off the backbones we tuned on.
+    Used frozen and without any task-specific training; the other backbones in
+    the column differ in model family and training corpus.
     """
 
     name = "cliplaion"
@@ -111,7 +110,7 @@ class CLIPLaionB32Backbone(OpenClipBackbone):
     """LAION-2B CLIP ViT-B/32 (open_clip tag laion2b_s34b_b79k).
 
     Same LAION-2B family / training corpus as ``cliplaion`` (ViT-L/14); used
-    for the three-backbone column (B/32, L/14, G/14) matching SDR-CIR Table 1.
+    for the three-backbone column (B/32, L/14, G/14).
     """
 
     name = "cliplaion_b32"

@@ -4,7 +4,7 @@
 Encodes every corpus image with ``normalize(backbone.encode_images(img))`` and
 writes
 
-    indices/cirbench/<dataset>/<backbone>/{index.faiss, identifiers.npy, metadata.json}
+    indices/<dataset>/<backbone>/{index.faiss, identifiers.npy, metadata.json}
 
 The row order of the index is the manifest ``corpus_ids`` order; ``calico_eval``
 asserts that the two line up (row r <-> corpus_ids[r]) and pairs row r with the
@@ -38,7 +38,7 @@ from faiss_utils import save_faiss_index
 
 ROOT = Path(os.environ.get("CALICO_ROOT", Path(__file__).resolve().parent)).resolve()
 MAN_DIR = ROOT / "manifests"
-IDX_DIR = ROOT / "indices" / "cirbench"
+IDX_DIR = ROOT / "indices"
 
 _ANCHORS = ("CIRR", "CIRCO", "FashionIQ")
 

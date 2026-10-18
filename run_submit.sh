@@ -5,7 +5,6 @@
 #
 # HP points at a directory holding the validation json written by run_eval.sh
 # (used for --hparams); SUB is where the submission files are written.
-# See README section 7.
 set -euo pipefail
 
 PY=${PY:-python}
@@ -26,4 +25,4 @@ $PY calico_eval.py --dataset circo_test --cqcc --csls 20 --csls_lam 0.5 \
     --submit --hparams "$HP/circo_val.json" --sub-dir "$SUB" --gpu "$GPU"
 
 # FashionIQ: submit the three category rankings through the official
-# Fashion-IQ evaluation repository json format (see README section 7).
+# Fashion-IQ evaluation repository json format (the official Fashion-IQ evaluation format).

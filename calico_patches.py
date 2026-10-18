@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build the gallery patch-token cache (RELIC/CALICO R2/R4) for ONE backbone.
+"""Build the gallery patch-token cache (CALICO) for ONE backbone.
 
 Generic replacement of probe_late_interaction.py's cache builder, which was
-hard-wired to ViT-L-14.  Reads a ``cirbench/<dataset>.json`` manifest and
+hard-wired to ViT-L-14.  Reads a ``manifests/<dataset>.json`` manifest and
 writes ``out/lateint/<dataset>_patch.<tag>.npz`` with the same three members
 as the L/14 caches:
 
@@ -23,9 +23,9 @@ can be merged without materialising it in RAM: the npy data section is
 streamed straight into a ZIP_STORED zip (= the on-disk .npz layout).
 
 Usage
-  python encode_cirbench_patches.py --dataset cirr_val --tag cliplaion_b32 \
+  python calico_patches.py --dataset cirr_val --tag cliplaion_b32 \
       --shard 0 --num-shards 4 --gpu 2 --img-bs 128
-  python encode_cirbench_patches.py --dataset cirr_val --tag cliplaion_b32 --merge
+  python calico_patches.py --dataset cirr_val --tag cliplaion_b32 --merge
 """
 import argparse
 import io

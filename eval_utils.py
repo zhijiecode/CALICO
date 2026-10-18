@@ -1,12 +1,9 @@
 """Small evaluation helpers used by ``calico_eval.py``.
 
-Both functions are copied verbatim from the SDR-CIR codebase so that the
-numbers reported by CALICO are computed by exactly the same code paths:
-
-  * ``circo_metrics`` -- from ``sdrcir_ref/view_eval_cirbench.py`` (the official
-    CIRCO mAP@k, itself verbatim ``compute_results.py::circo``).
-  * ``simplex``       -- from ``sdrcir_ref/view_eval.py`` (the non-negative
-    weight simplex on a ``step`` grid used by the multi-view fusion grid search).
+``circo_metrics`` implements the official CIRCO mAP@k / R@k protocol, and
+``simplex`` solves the non-negative weight simplex on a ``step`` grid used by
+the multi-view fusion search.  Both follow the public evaluation procedures so
+that CALICO numbers are computed on the same scales as other work.
 """
 import numpy as np
 
