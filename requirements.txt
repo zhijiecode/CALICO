@@ -1,0 +1,19 @@
+# CALICO -- pinned to the versions used for the paper.
+# Tested on Linux + CUDA 11.8 with Python 3.9.
+
+python>=3.9
+torch==2.6.0                 # CUDA 11.8 build (torch==2.6.0+cu118)
+faiss-cpu==1.13.0
+numpy==1.26.4
+transformers==4.36.0         # used by the Qwen3-VL-8B view/role generators
+pillow==11.3.0
+tqdm==4.67.0
+scipy==1.13.1
+timm==1.0.29                 # open_clip vision tower dependency
+
+# open_clip_torch is pinned to the dev build that ships the exact backbone
+# definitions used here.  Install it with:
+#   pip install "open_clip_torch==4.2.0.dev0"
+# or, if that wheel is unavailable, from source:
+#   pip install git+https://github.com/mlfoundations/open_clip.git
+open_clip_torch==4.2.0.dev0
